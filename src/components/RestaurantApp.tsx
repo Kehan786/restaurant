@@ -386,7 +386,7 @@ export default function RestaurantApp() {
           <div className="mb-4"></div>
           <h3 className="font-semibold">Bestellung</h3>
           {selectedTable.orders
-            .sort((a, b) => (a.item.id > 4 ? -1 : 1))
+            .sort((a) => (a.item.id > 4 ? -1 : 1))
             .map((order, index) => (
               <div
                 key={index}
