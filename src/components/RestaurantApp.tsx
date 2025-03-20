@@ -11,6 +11,7 @@ import { generateReceiptJSON } from "@/components/rechnungsvorlage";
 type OrderItem = {
   item: MenuItem;
   quantity: number;
+  type: MenuType; // Neues Feld hinzufügen
 };
 
 export type TableData = {
@@ -77,19 +78,33 @@ export default function RestaurantApp() {
         let newOrders;
         if (existingOrder) {
           newOrders = table.orders.map((order) =>
-            order.item.id === item.id ? { ...order, quantity: order.quantity + 1 } : order
+            order.item.id === item.id ? { 
+              ...order, 
+              quantity: order.quantity + 1 
+            } : order
           );
         } else {
-          newOrders = [...table.orders, { item, quantity: 1 }];
+          newOrders = [
+            ...table.orders, 
+            { 
+              item, 
+              quantity: 1, 
+              type: menuType // Hier wird MenuType verwendet
+            }
+          ];
         }
-        const updatedTable = { ...table, orders: newOrders, total: table.total + item.price };
+        const updatedTable = { 
+          ...table, 
+          orders: newOrders,
+          total: table.total + item.price 
+        };
         setSelectedTable(updatedTable);
         return updatedTable;
       }
       return table;
     });
     setTables(updatedTables);
-    saveTablesToLocalStorage(updatedTables); // Speichern im Local Storage
+    saveTablesToLocalStorage(updatedTables);
   };
 
   const removeFromTable = (item: MenuItem) => {
@@ -142,14 +157,21 @@ export default function RestaurantApp() {
 
   const addTable = () => {
     if (newTableNumber.trim() === "") return;
+    
+    // Generate new unique ID based on highest existing ID
+    const newId = tables.length > 0 
+      ? Math.max(...tables.map(t => t.id)) + 1 
+      : 1;
+  
     const newTable = {
-      id: tables.length + 1,
+      id: newId,
       name: `Tisch ${newTableNumber}`,
       orders: [],
       total: 0,
     };
+    
     const updatedTables = [...tables, newTable];
-    setTables([...tables, newTable]);
+    setTables(updatedTables);
     saveTablesToLocalStorage(updatedTables);
     setNewTableNumber("");
   };
@@ -164,6 +186,12 @@ export default function RestaurantApp() {
       id: -1, // Spezielle ID für Divers-Einträge
       name: "Divers",
       price: amount,
+    };
+  
+    const newOrder: OrderItem = {
+      item: diversItem,
+      quantity: 1,
+      type: "speisen", // Explizit als MenuType
     };
   
     const updatedTables = tables.map((table) => {
@@ -183,7 +211,7 @@ export default function RestaurantApp() {
           );
         } else {
           // Wenn nein, füge einen neuen Eintrag hinzu
-          newOrders = [...table.orders, { item: diversItem, quantity: 1 }];
+          newOrders = [...table.orders, newOrder];
         }
   
         const updatedTable = {
@@ -199,7 +227,7 @@ export default function RestaurantApp() {
   
     setTables(updatedTables);
     saveTablesToLocalStorage(updatedTables); // Local Storage aktualisieren
-    setDiversAmount("");
+    setDiversAmount(""); // Eingabefeld zurücksetzen
   };
 
   const deleteTable = (tableId: number) => {
@@ -366,39 +394,60 @@ useEffect(() => {
 
       {/* Bestellübersicht */}
       {selectedTable && (
-        <div>
-          <div className="mb-4"></div>
-          <h3 className="font-semibold">Bestellung</h3>
-          {selectedTable.orders
-            .sort((a) => (a.item.id > 4 ? -1 : 1))
-            .map((order, index) => (
-              <div
-                key={index}
-                className="flex justify-between items-center space-x-4 mb-2"
-              >
-                <p>
-                  {order.quantity}x {order.item.name} - {order.item.price.toFixed(2)}€
-                </p>
-                <p>{(order.quantity * order.item.price).toFixed(2)}€</p>
-                <div className="flex space-x-2">
-                  <Button
-                    className="bg-green-500 text-white"
-                    onClick={() => increaseQuantity(order.item)}
-                  >
-                    +
-                  </Button>
-                  <Button
-                    className="bg-red-500 text-white"
-                    onClick={() => removeFromTable(order.item)}
-                  >
-                    -
-                  </Button>
-                </div>
-              </div>
-            ))}
-          <h3 className="font-bold">Gesamt: {selectedTable.total.toFixed(2)}€</h3>
+  <div>
+    <div className="mb-4"></div>
+    <h3 className="font-semibold">Bestellung</h3>
+    {selectedTable.orders
+      .reduce(
+        (acc, order) => {
+          // Getränke und Speisen trennen
+          order.type === "getraenke" 
+            ? acc.drinks.push(order) 
+            : acc.speisen.push(order);
+          return acc;
+        },
+        { drinks: [] as OrderItem[], speisen: [] as OrderItem[] }
+      )
+      // Kombiniere die Gruppen korrekt
+      .drinks.concat(
+        // Zugriff auf speisen über das Reduce-Ergebnis
+        selectedTable.orders
+          .reduce(
+            (acc, order) => {
+              order.type === "speisen" && acc.speisen.push(order);
+              return acc;
+            },
+            { speisen: [] as OrderItem[] }
+          ).speisen
+      )
+      .map((order, index) => (
+        <div
+          key={index}
+          className="flex justify-between items-center space-x-4 mb-2"
+        >
+          <p>
+            {order.quantity}x {order.item.name} - {order.item.price.toFixed(2)}€
+          </p>
+          <p>{(order.quantity * order.item.price).toFixed(2)}€</p>
+          <div className="flex space-x-2">
+            <Button
+              className="bg-green-500 text-white"
+              onClick={() => increaseQuantity(order.item)}
+            >
+              +
+            </Button>
+            <Button
+              className="bg-red-500 text-white"
+              onClick={() => removeFromTable(order.item)}
+            >
+              -
+            </Button>
+          </div>
         </div>
-      )}
+      ))}
+    <h3 className="font-bold">Gesamt: {selectedTable.total.toFixed(2)}€</h3>
+  </div>
+)}
 
       {/* Rechnung drucken */}
       {selectedTable && selectedTable.total > 0 && (
