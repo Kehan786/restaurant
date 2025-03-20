@@ -397,30 +397,26 @@ useEffect(() => {
   <div>
     <div className="mb-4"></div>
     <h3 className="font-semibold">Bestellung</h3>
-    {selectedTable.orders
-      .reduce(
+    {/* Gruppiere und sortiere Bestellungen */}
+    {(() => {
+      // Gruppiere Bestellungen in Getränke und Speisen
+      const grouped = selectedTable.orders.reduce(
         (acc, order) => {
-          // Getränke und Speisen trennen
-          order.type === "getraenke" 
-            ? acc.drinks.push(order) 
-            : acc.speisen.push(order);
+          if (order.type === "getraenke") {
+            acc.drinks.push(order);
+          } else {
+            acc.speisen.push(order);
+          }
           return acc;
         },
         { drinks: [] as OrderItem[], speisen: [] as OrderItem[] }
-      )
-      // Kombiniere die Gruppen korrekt
-      .drinks.concat(
-        // Zugriff auf speisen über das Reduce-Ergebnis
-        selectedTable.orders
-          .reduce(
-            (acc, order) => {
-              order.type === "speisen" && acc.speisen.push(order);
-              return acc;
-            },
-            { speisen: [] as OrderItem[] }
-          ).speisen
-      )
-      .map((order, index) => (
+      );
+
+      // Kombiniere Getränke und Speisen in der gewünschten Reihenfolge
+      const sortedOrders = grouped.drinks.concat(grouped.speisen);
+
+      // Rendere die Bestellungen
+      return sortedOrders.map((order, index) => (
         <div
           key={index}
           className="flex justify-between items-center space-x-4 mb-2"
@@ -444,7 +440,9 @@ useEffect(() => {
             </Button>
           </div>
         </div>
-      ))}
+      ));
+    })()}
+    {/* Gesamtsumme anzeigen */}
     <h3 className="font-bold">Gesamt: {selectedTable.total.toFixed(2)}€</h3>
   </div>
 )}
