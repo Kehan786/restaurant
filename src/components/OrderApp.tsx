@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Table from "@/components/ui/Table";
 import { suppliers, Supplier, SupplierItem } from "@/components/suppliers";
 
 type OrderRow = SupplierItem & {
@@ -53,6 +52,32 @@ export default function OrderApp() {
     setRows((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], quantity: safeValue };
+      return updated;
+    });
+  };
+
+  const adjustQuantity = (index: number, delta: number) => {
+    setRows((prev) => {
+      const updated = [...prev];
+      const current = updated[index].quantity;
+      const numeric = parseFloat(current.replace(",", "."));
+
+      let nextValue: string;
+
+      if (isNaN(numeric)) {
+        // Wenn noch nichts oder Müll drinsteht: bei + auf "1", bei - auf leer
+        nextValue = delta > 0 ? "1" : "";
+      } else {
+        const next = numeric + delta;
+        if (next < 1) {
+          // Unter 1 soll nichts stehen
+          nextValue = "";
+        } else {
+          nextValue = String(Math.floor(next));
+        }
+      }
+
+      updated[index] = { ...updated[index], quantity: nextValue };
       return updated;
     });
   };
@@ -230,64 +255,94 @@ export default function OrderApp() {
 
           {selectedSupplier ? (
             <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <Table>
-                  <thead>
-                    <tr>
-                      <th className="border px-2 py-1 text-left">Art.-Nr.</th>
-                      <th className="border px-2 py-1 text-left">Artikel</th>
-                      <th className="border px-2 py-1 text-left">Einheit</th>
-                      <th className="border px-2 py-1 text-left">Menge</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={row.id}>
-                        <td className="border px-2 py-1">
-                          <Input
-                            value={row.articleNumber}
-                            onChange={(e) =>
-                              handleFieldChange(
-                                index,
-                                "articleNumber",
-                                e.target.value
-                              )
-                            }
-                            className="w-full"
-                          />
-                        </td>
-                        <td className="border px-2 py-1">
-                          <Input
-                            value={row.name}
-                            onChange={(e) =>
-                              handleFieldChange(index, "name", e.target.value)
-                            }
-                            className="w-full"
-                          />
-                        </td>
-                        <td className="border px-2 py-1">
-                          <Input
-                            value={row.unit}
-                            onChange={(e) =>
-                              handleFieldChange(index, "unit", e.target.value)
-                            }
-                            className="w-full"
-                          />
-                        </td>
-                        <td className="border px-2 py-1">
-                          <Input
-                            type="number"
-                            value={row.quantity}
-                            onChange={(e) =>
-                              handleQuantityChange(index, e.target.value)
-                            }
-                            className="w-full"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
+              <div className="space-y-2">
+                {/* Kopfzeile (Labels) – nur ab mittleren Screens sichtbar */}
+                <div className="hidden sm:grid sm:grid-cols-4 gap-2 text-xs font-semibold text-gray-600">
+                  <div>Art.-Nr.</div>
+                  <div>Artikel</div>
+                  <div>Einheit</div>
+                  <div>Menge</div>
+                </div>
+
+                {/* Zeilen */}
+                {rows.map((row, index) => (
+                  <div
+                    key={row.id}
+                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 border rounded-md p-2"
+                  >
+                    {/* Art.-Nr. */}
+                    <div className="flex flex-col">
+                      <span className="sm:hidden text-xs font-semibold text-gray-600">
+                        Art.-Nr.
+                      </span>
+                      <Input
+                        value={row.articleNumber}
+                        onChange={(e) =>
+                          handleFieldChange(index, "articleNumber", e.target.value)
+                        }
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Artikelname – als textarea, damit der Text umbrechen kann */}
+                    <div className="flex flex-col">
+                      <span className="sm:hidden text-xs font-semibold text-gray-600">
+                        Artikel
+                      </span>
+                      <textarea
+                        value={row.name}
+                        onChange={(e) =>
+                          handleFieldChange(index, "name", e.target.value)
+                        }
+                        className="w-full border rounded px-2 py-1 text-sm resize-none leading-snug"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Einheit */}
+                    <div className="flex flex-col">
+                      <span className="sm:hidden text-xs font-semibold text-gray-600">
+                        Einheit
+                      </span>
+                      <Input
+                        value={row.unit}
+                        onChange={(e) =>
+                          handleFieldChange(index, "unit", e.target.value)
+                        }
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Menge */}
+                    <div className="flex flex-col">
+                      <span className="sm:hidden text-xs font-semibold text-gray-600">
+                        Menge
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          onClick={() => adjustQuantity(index, -1)}
+                          className="px-2 py-1 min-w-[2.5rem]"
+                        >
+                          -
+                        </Button>
+                        <Input
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) =>
+                            handleQuantityChange(index, e.target.value)
+                          }
+                          className="w-full text-center"
+                        />
+                        <Button
+                          onClick={() => adjustQuantity(index, 1)}
+                          className="px-2 py-1 min-w-[2.5rem]"
+                        >
+                          +
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <Button onClick={handleAddRow} className="mt-2">
