@@ -77,7 +77,36 @@ import { TableData } from "@/components/RestaurantApp";
         },
         {
           type: "text" as const,
-          text: `MwSt. 19% auf ${selectedTable.total.toFixed(2).replace(".", ",")}€: ${(selectedTable.total - selectedTable.total / 1.19).toFixed(2).replace(".", ",")}€`,
+          text: (() => {
+            const { speisenBrutto, getraenkeBrutto } = selectedTable.orders.reduce(
+              (acc, order) => {
+                const type = order.type === "getraenke" ? "getraenke" : "speisen"; // Fallback für alte Daten
+                const brutto = order.item.price * order.quantity;
+                if (type === "getraenke") acc.getraenkeBrutto += brutto;
+                else acc.speisenBrutto += brutto;
+                return acc;
+              },
+              { speisenBrutto: 0, getraenkeBrutto: 0 }
+            );
+            const lines: string[] = [];
+            if (speisenBrutto > 0) {
+              const speisenMwst = speisenBrutto - speisenBrutto / 1.07;
+              lines.push(
+                `A: MwSt. 7% auf ${speisenBrutto.toFixed(2).replace(".", ",")}€: ${speisenMwst
+                  .toFixed(2)
+                  .replace(".", ",")}€`
+              );
+            }
+            if (getraenkeBrutto > 0) {
+              const getraenkeMwst = getraenkeBrutto - getraenkeBrutto / 1.19;
+              lines.push(
+                `B: MwSt. 19% auf ${getraenkeBrutto.toFixed(2).replace(".", ",")}€: ${getraenkeMwst
+                  .toFixed(2)
+                  .replace(".", ",")}€`
+              );
+            }
+            return lines.join("\n");
+          })(),
         },
         {
           type: "divider" as const,
